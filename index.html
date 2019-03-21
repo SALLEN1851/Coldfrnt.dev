@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>An interactive model-based calculator of cycling power vs. speed</title>
+
+  <meta name="description" content="An interactive calculator that lets you explore the relationship between cycling power and speed." />
+  <meta name="author" content="Steve Gribble" />
+
+  <!-- style sheets -->
+  <link href="css/material.min.css" rel="stylesheet" type="text/css"/>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" type="text/css"/>
+
+  <!-- jquery and material design -->
+  <script src="js/jquery.min.js" type="text/javascript" ></script>
+  <script src="js/material.min.js" type="text/javascript"></script>
+
+  <!-- flot, including excanvas for IE and various plugins -->
+  <!--[if IE]><script language="javascript" type="text/javascript" src="js/excanvas.min.js"></script><![endif]-->
+  <script type="text/javascript" language="javascript" src="js/jquery.flot.min.js?06032018"></script>
+  <script type="text/javascript" language="javascript" src="js/jquery.flot.axislabels.js?06032018"></script>
+  <script type="text/javascript" language="javascript" src="js/jquery.flot.crosshair.min.js?06032018"></script>
+  <script type="text/javascript" language="javascript" src="js/jquery.flot.selection.min.js?06032018"></script>
+  <script type="text/javascript" language="javascript" src="js/jquery.flot.resize.min.js?06032018"></script>
+
+  <!-- mathjax -->
+  <script type="text/javascript" async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=TeX-MML-AM_CHTML"></script>
+
+  <!-- clipboard code -->
+  <script type="text/javascript" language="javascript" src="js/clipboard.min.js?06032018"></script>
+
+  <!-- solver code -->
+  <script type="text/javascript" language="javascript" src="js/power_v_speed.js?02012019"></script>
+
+
+</head>
+
+<body>
+
+<div class="mdl-layout mdl-js-layout mdl-layout--fixed-header">
+  <header class="mdl-layout__header">
+    <div class="mdl-layout-icon"></div>
+    <div class="mdl-layout__header-row">
+      <!-- Title -->
+      <span class="mdl-layout-title">The computational cyclist</span>
+      <!-- Add spacer, to align navigation to the right -->
+      <div class="mdl-layout-spacer"></div>
+      <!-- Navigation. We hide it in small screens. -->
+      <nav class="mdl-navigation mdl-layout--large-screen-only">
+        <a class="mdl-navigation__link" href="power_v_speed.html">power vs. speed</a>
+        <a class="mdl-navigation__link" href="air_density.html">air density (Rho)</a>
+      </nav>
+    </div>
+  </header>
+  <div class="mdl-layout__drawer">
+    <nav class="mdl-navigation">
+        <a class="mdl-navigation__link" href="power_v_speed.html">power vs. speed</a>
+        <a class="mdl-navigation__link" href="air_density.html">air density (Rho)</a>
+    </nav>
+  </div>
+  <main class="mdl-layout__content">
+    <div class="page-content" style="margin-left:15px;margin-right:15px;">
+      <!-- Your content goes here -->
+      <br>
+      <a href="http://www.gribble.org/">Steve Gribble</a> &nbsp; &middot; &nbsp;
+      <i>gribble [at] gmail [dot] com</i>
+
+      <h4>Cycling power and speed</h4>
+
+      Explore the relationship between your cycling power (wattage)
+      and speed. Move your cursor over the graph, or tap on it, to explore specific points.
+      Modify the fields below and the graph will update.
+
+      <!-- A grid with three elements in it: the graph + hovervalues, the input fields, and the p2v / v2p. -->
+      <div class="mdl-grid">
+	<div id="graphtab" class="mdl-cell mdl-cell--6-col mdl-cell--4-col-tablet">
+	  <div id="powergraph" style="height:335px;padding-left:0;padding-right:0;margin-left:auto;margin-right:auto;"></div>
+
+	  <div id="fbreakout" style="text-align:center;">
+            Move your cursor over the graph to explore the breakdown of forces involved at a particular speed.<br>
+	  </div>
+	</div>
+
+	<div class="mdl-cell mdl-cell--6-col mdl-cell--4-col-tablet" style="background-color:#f4f4f4;">
+	  <div style="margin-left:15px;margin-top:15px;margin-bottom:15px">
+	    <b>Units</b>:&nbsp;&nbsp;
+	    <input type="radio" name="units" value="imperial" checked>&nbsp;imperial&nbsp;&nbsp;
+	    <input type="radio" name="units" value="metric">&nbsp;metric<br>
+	    <br>
+
+	    <b>Rider and bike parameters</b>
+	    <p>
+	      <div style="padding-left:15px;">
+		<span id="rp_wr">Weight of rider (lb)</span> <input name="rp_wr" type="text" size=10/><br>
+		<span id="rp_wb">Weight of bike (lb)&nbsp;</span> <input name="rp_wb" type="text" size=10/><br>
+		<i><span id="rp_totalw">Total weight <b>W</b> (lb):</span> <b><span id="rp_wt"></span></b></i>
+	      </div>
+	    </p>
+
+	    <p>
+	      <div style="padding-left:15px;">
+		<span id="rp_a">Frontal area <b>A</b>(ft<sup>2</sup>)&nbsp;</span> <input name="rp_a" type="text" size=10/><br>
+		<span id="rp_cd">Drag coefficient <b>C<sub>d</sub></b></span> <input name="rp_cd" type="text" size=10/><br>
+		<i><span id="rp_cdatot"><b>C<sub>d</sub></b> &middot; <b>A</b> (ft<sup>2</sup>):</span>&nbsp; <b><span id="rp_cda"></span></b></i>
+	      </div>
+	    </p>
+
+	    <p>
+	      <div style="padding-left:15px;">
+		<span>Drivetrain loss <b>Loss<sub>dt</sub></b> (%)</span> <input name="rp_dtl" type="text" size=10/>
+	      </div>
+	    </p>
+
+	    <b>Environmental parameters</b>
+	    <p>
+	      <div style="padding-left:15px;">
+		<span>Percent grade of hill <b>G</b> (negative for downhill) (%)</span> <input name="ep_g" type="text" size=10/><br>
+                <span id="ep_headwind">Speed of <b>headwind</b> (negative for tailwind) (mph)</span> <input name="ep_headwind" type="text" size=5/><br>
+		<span>Coefficient of rolling resistance <b>C<sub>rr</sub></b></span> <input name="ep_crr" type="text" size=10/><br>
+		<span id="ep_rho">Air density <b>Rho</b> (lb/ft<sup>3</sup>)</span> <input name="ep_rho" type="text" size=15/>
+	      </div>
+	    </p>
+
+            <b>Share your parameter settings with others</b>
+            <p>
+              <div style="padding-left:15px;">
+                Press the button to copy the sharing URL to the clipboard:<br>
+                <input id="clipurl" type="text" value="https://www.gribble.org/cycling/power_v_speed.html" size=56 readonly
+                       style="display:inline-block; padding:4px; margin-top:4px; height:22px; border-width:1px; vertical-align:top;"></input>
+                <button class="button" id="copy-button" type="button" data-clipboard-target="#clipurl"
+                        style="display:inline-block; padding:3px; margin-left:-4px; margin-top:4px; vertical-align:top;">
+                  <img class="clippy" src="pics/clippy.svg" height=24 alt="Copy to clipboard"/>
+                </button>
+              </div>
+            </p>
+
+	  </div>
+	</div>
+      </div>
+
+      <b>Solve for specific power or speed</b>
+      <div class="mdl-grid">
+	<p>
+	<div class="mdl-cell mdl-cell--12-col mdl-cell--8-col-tablet">
+	  <p>
+	    If you apply <input name="p2v" type="text" size=5/>
+	    <b>watts</b> of power, you will ride at
+	    velocity <span id="p2v_ov"></span>
+	    <b><span id="p2v_ov_td">mph</span></b>.
+	    <br/>
+
+	    If you want to ride at velocity
+	    <input name="v2p"type="text" size=4/>
+	    <b><span id="v2p_td">mph</span></b>, you must apply
+	    <span id="v2p_op"></span> <b>watts</b> of power.
+	  </p>
+	</div>
+	</p>
+      </div>
+
+
+    <h4>The physics affecting cycling at constant speed</h4>
+
+    <p>This web page uses physical models of forces on a cyclist to help
+      you estimate the relationship between <b>power P</b> (watts) and
+      <b>velocity V</b> (kph or mph) of a cyclist.  To do this, you need
+      to estimate several parameters; reasonable defaults are given.
+
+    <p>There are three primary forces that you, as a cyclist, must
+      overcome in order to move forward:
+
+      <ul>
+
+	<li> <b>Gravity:</b> If you're cycling uphill, you're fighting
+	  against gravity,but if you're cycling downhill, gravity works for
+	  you.  This page measures the steepness of a hill in terms of
+	  percentage grade <b>G</b>: rise divided by run, multiplied by 100.
+	  The heavier you and your bike are, the more energy you must spend
+	  to overcome gravity.  The combined weight of you (the cyclist) and
+	  your bike is <b>W</b> (kg).  The gravitational force constant
+	  <b>g</b> is 9.8067 (m/s<sup>2</sup>).
+
+	  <p><br>
+	    The formula for gravitational force acting on a cyclist, in metric
+	    units, is:
+	    <br><br>
+            \( \qquad F_{\mbox{gravity}} = 9.8067 \cdot \sin(\arctan(\frac{G}{100})) \cdot W \)
+	    <br>
+
+	    <li> <b>Rolling resistance:</b> Friction between your tires and
+	      the road surface slows you down.  The bumpier the road, the more
+	      friction you'll experience; the higher quality your tires and
+	      tube, the less friction you'll experience.  As well, the heavier
+	      you and your bike are, the more friction you'll experience.  There
+	      is a dimensionless parameter, called the <i>coefficient of rolling
+		resistance</i>, or <b>C<sub>rr</sub></b>, that captures the
+	      bumpiness of the road and the quality of your tires.
+
+	      <p><br>
+		The formula for the rolling resistance acting on a cyclist, in
+		metric units, is:
+		  <br><br>
+		  \( \qquad F_{\mbox{rolling}} = 9.8067 \cdot \cos(\arctan(\frac{G}{100})) \cdot W \cdot C_{rr} \)
+		  <br>
+
+              <li> <b>Aerodynamic drag:</b> As you cycle through the air, your
+		  bike and body need to push the air around you, similar to how a
+		  snowplow pushes snow out of the way.  Because of this, the air
+		  exerts a force against you as you ride.  There are a few things
+		  that dictate how much force the air exerts against you.  The
+		  faster you ride, velocity <b>V</b> (m/s), the more force the air
+		  pushes against you.  As well, you and your bike present a certain
+		  frontal area <b>A</b> (m<sup>2</sup>) to the air.  The larger this
+		  frontal area, the more air you have to displace, and the larger
+		  the force the air pushes against you.  This is why cyclists and
+		  bike manufacturers try hard to minimize frontal area in an
+		  aerodynamic position.  The air density <b>Rho</b>
+		  (kg/m<sup>3</sup>) is also important; the more dense the air, the
+		  more force it exerts on you.
+		  <br><br>
+
+		  <p> Finally, there are other effects, like the slipperyness of
+		    your clothing and the degree to which air flows laminarly rather
+		    than turbulently around you and your bike.  Optimizing your
+		    aerodynamic positions also help with this. These other effects are
+		    captured in another dimensionless parameter called the <i>drag
+		      coefficient</i>, or <b>C<sub>d</sub></b>.  Sometimes you will see
+		    people talking about
+		    &quot;<b>C<sub>d</sub></b>&nbsp;&middot;&nbsp;<b>A</b>&quot;, or
+		    <b>CdA</b>.  This is just the drag coefficient
+		    <b>C<sub>d</sub></b> multiplied by the frontal area <b>A</b>.
+		    Unless you have access to a wind tunnel, it is hard to measure
+		    <b>C<sub>d</sub></b> and <b>A</b> separately; instead, people
+		    often just measure or infer <b>C<sub>d</sub></b> &middot; <b>A</b>
+		    as a combined number.
+
+		   <p>
+		    The formula for the aerodynamic drag acting on a cyclist, in
+		    metric units, is:
+		       <br><br>
+		       \( \qquad F_{\mbox{drag}} = 0.5 \cdot C_{d} \cdot A \cdot \mbox{Rho} \cdot V^2 \)
+		       <br>
+
+
+      </ul>
+
+      The total force resisting you, the cyclist, is the sum of these three
+      forces:<br><br>
+        \( \qquad F_{\mbox{resist}} = F_{\mbox{gravity}} + F_{\mbox{rolling}} + F_{\mbox{drag}} \)
+	<br>
+
+      <br> For each meter that you cycle forward, you spend energy overcoming
+      this resistive force.  The total amount of energy you must expend
+      to move a distance <b>D</b> (m) against this force is called the
+      <b>Work</b> (Joules) that you do:<br><br>
+        \( \qquad \mbox{Work} = F_{\mbox{resist}} \cdot D \)
+	<br><br>
+
+      If you are moving forward at velocity <b>V</b> (m/s), then you must
+      supply energy at a rate that is sufficient to do the work to move
+      <b>V</b> meters each second.  This rate of energy expenditure is
+      called <i>power</i>, and it is measured in watts.  The power
+      <b>P<sub>wheel</sub></b> (watts) that must be provided to your
+      bicyle's wheels to overcome the total resistive force
+      <b>F<sub>resist</sub></b> (Newtons) while moving forward at velocity
+      <b>V</b> (m/s) is:<br><br>
+        \( \qquad P_{\mbox{wheel}} = F_{\mbox{resist}} \cdot V \)
+	<br><br>
+
+      You, the cyclist, are the engine providing this power.  The power
+      that must be provided to your bicycle's wheels comes from your legs,
+      but not all of the power that your legs deliver make it to the
+      wheels.  Friction in the drive train (chains, gears, bearings, etc.)
+      causes a small amount of loss, usually around 2%, assuming you have
+      a clean and nicely lubricated drivetrain.  Let's call the percentage
+      of drivetain loss <b>Loss<sub>dt</sub></b> (percent).
+
+    <p> So, if the power that your legs provide is
+      <b>P<sub>legs</sub></b> (watts), then the power that makes it to the
+      wheel is:<br><br>
+
+        \( \qquad P_{\mbox{wheel}} = \left(1 - \frac{\mbox{Loss}_{\mbox{dt}}}{100}\right) \cdot P_{\mbox{legs}} \)
+	<br><br>
+
+      Putting it all together, the equation that relates the power
+      produced by your legs to the steady-state speed you travel is:
+	<br><br>
+
+	\( \qquad P_{\mbox{legs}} = \left(1 - \frac{\mbox{Loss}_{\mbox{dt}}}{100}\right)^{-1} \cdot \left[F_{\mbox{gravity}} + F_{\mbox{rolling}} + F_{\mbox{drag}}\right] \cdot V \)
+	<br>
+
+	<p>or, more fully:
+	<br><br>
+
+	\( \qquad P_{\mbox{legs}} = \left(1 - \frac{\mbox{Loss}_{\mbox{dt}}}{100}\right)^{-1} \cdot \left[ \left(9.8067 \cdot W \cdot \left[\sin(\arctan(\frac{G}{100})) + C_{\mbox{rr}} \cdot \cos(\arctan(\frac{G}{100}))\right] \right) + \left(0.5 \cdot C_{d} \cdot A \cdot \mbox{Rho} \cdot V^2\right) \right] \cdot V \)
+	<br>
+
+      <br>One of the scary implications of this equation is that at high
+      speed, the power you have to produce is proportional to the
+      <i>cube</i> of your velocity.  So, to increase your speed by 25%,
+      you need to nearly double your wattage!
+    <p>
+
+    </div>
+  </main>
+</div>
+
+</body>
+</html>
